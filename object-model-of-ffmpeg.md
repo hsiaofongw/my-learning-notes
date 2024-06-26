@@ -83,3 +83,7 @@ ffmpeg 的命令行参数可分为全局参数，作用在某个流上的参数�
 有了容器上下文，ffmpeg 可以从容器上下文中提取出 packets，每一个 packet 有一个 stream id，这个 stream id 告诉我们这个 packet 来自哪个流，现在只要我们想我们可以把 packets 按照 stream id 进行分门别类的归组，等于说到了这一步，之前以多路复用的方式混合进 container 的 packets，现在已经重新分离出来了。
 
 在这之后，ffmpeg 会打开输出文件，创建相应的格式上下文，然后把刚 demuxed 出来的 packets 写进去。
+
+![](remux-detailed.png)
+
+上图演示了单个输入和单个输出文件的 remuxing 流程框架。
