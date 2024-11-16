@@ -105,6 +105,7 @@ server {
     resolver 127.0.0.11; # 127.0.0.11 是 docker 自定义网络默认 DNS（stub）解析器
 
     location / {
+        proxy_http_version 1.1;
         proxy_pass http://$host;
     }
 }
@@ -325,6 +326,38 @@ docker run \
 
 由于 proxy 不需要知道 HTTPS 的密文（SNI 是明文的），也不需要修改或者重新构造 HTTP 协议的请求或者响应内容本身，所以不需要进行证书劫持。
 
+## 补充：DNS Search Domain
+
+DNS Search Domain（搜索域）是一个域名列表，作用在域名解析阶段，它能够影响解析结果。例如，假设有下列内容的搜索域：
+
+```
+foo.bar
+lab.com
+baz.lab.com
+123.net
+```
+
+那么，当 resolver 需要回答针对于域名 'a.com.' 的查询的时候，搜索域里面的每一项会被依次追加到域名的末尾并进行查询，resolver 会依次查询这些追加了搜索域之后的域名的地址，返回第一个得到答案的：
+
+```
+a.com.foo.bar
+a.com.lab.com
+a.com.baz.lab.com
+a.com.123.net
+```
+
+如果以上查询都得不到答案，那么，a.com 自身才会被查询。
+
+搜索域对于用户而言可以减轻记忆负担同时也减少输入网址（或域名）时所需的击键次数。
+
+对于系统管理员来说，搜索域可以用来实现针对性的网络路由策略，例如，管理员可以通过 DHCP 的方式为公司 2 层楼市场部的电脑下发搜索域配置：marketing.example.com，同时为公司 3 层楼研发部下发搜索域配置：research.example.com，于是，市场部向 http://dashboard 发出的 HTTP 请求就会被路由到 dashboard.marketing.example.com，研发部向 http://dashboard 发出的 HTTP 请求就会被路由到 dashboard.research.example.com。
+
+搜索域为我们提供了一种，在满足不改变系统默认 resolver 地址的前提下，旁道部署 DNS 透明代理的方式。在默认情况下，系统的 resolver 地址通过局域网中的路由器以 DHCP 方式自动下发得到，通过设定搜索域，我们可以在不更改这个地址的前提下照样用上透明代理。
+
+## (todo) 补充：CoreDNS GeoIP
+
 ## 总结
 
-在这篇文章中，我们主要是通过 docker 已经 docker 强大的自定义网络功能来进行网络环境的模拟，并且在这个虚拟的网络环境中，去演示如何通过 DNS 劫持配合 SNI（或者 Host）嗅探的方式来实现透明代理。
+在这篇文章中，我们通过 docker 强大的网络虚拟化功能来进行网络环境的模拟，并且在这个虚拟的网络环境中，去演示如何通过 DNS 劫持配合 SNI（或者 Host）嗅探的方式来实现透明代理。
+
+docker 通过 Linux 的 netns 功能实现网络虚拟化，使得让运行在容器环境的应用程序相信自己身处在某个特定的网络环境中，未来我们还可以用 docker 来虚拟出更加复杂的 3 层网络拓扑，从而以一种灵活的、优雅的方式去按需构建用于验证各种天马行空的想法所需的 network lab。
